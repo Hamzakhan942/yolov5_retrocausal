@@ -457,6 +457,7 @@ def check_font(font=FONT, progress=False):
         torch.hub.download_url_to_file(url, str(file), progress=progress)
 
 
+@WorkingDirectory(ROOT)
 def check_dataset(data, autodownload=True):
     # Download, check and/or unzip dataset if not found locally
 
