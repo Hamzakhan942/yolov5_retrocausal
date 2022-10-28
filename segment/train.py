@@ -39,8 +39,6 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-import torch.nn.functional as F
-
 import segment.val as validate  # for end-of-epoch mAP
 from models.experimental import attempt_load
 from models.yolo import SegmentationModel
@@ -93,17 +91,6 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     data_dict = None
     if RANK in {-1, 0}:
         logger = GenericLogger(opt=opt, console_logger=LOGGER)
-        # loggers = Loggers(save_dir, weights, opt, hyp, LOGGER)  # loggers instance
-        # if loggers.clearml:
-        #     data_dict = loggers.clearml.data_dict  # None if no ClearML dataset or filled in by ClearML
-        # if loggers.wandb:
-        #     data_dict = loggers.wandb.data_dict
-        #     if resume:
-        #         weights, epochs, hyp, batch_size = opt.weights, opt.epochs, opt.hyp, opt.batch_size
-        #
-        # # Register actions
-        # for k in methods(loggers):
-        #     callbacks.register_action(k, callback=getattr(loggers, k))
 
     # Config
     plots = not evolve and not opt.noplots  # create plots
@@ -178,7 +165,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
 
     # DP mode
     if cuda and RANK == -1 and torch.cuda.device_count() > 1:
-        LOGGER.warning('WARNING: DP not recommended, use torch.distributed.run for best DDP Multi-GPU results.\n'
+        LOGGER.warning('WARNING ⚠️ DP not recommended, use torch.distributed.run for best DDP Multi-GPU results.\n'
                        'See Multi-GPU Tutorial at https://github.com/ultralytics/yolov5/issues/475 to get started.')
         model = torch.nn.DataParallel(model)
 
@@ -402,7 +389,6 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
                     'ema': deepcopy(ema.ema).half(),
                     'updates': ema.updates,
                     'optimizer': optimizer.state_dict(),
-                    # 'wandb_id': loggers.wandb.wandb_run.id if loggers.wandb else None,
                     'opt': vars(opt),
                     'date': datetime.now().isoformat()}
 
@@ -653,7 +639,7 @@ def main(opt, callbacks=Callbacks()):
             results = train(hyp.copy(), opt, device, callbacks)
             callbacks = Callbacks()
             # Write mutation results
-            print_mutation(results, hyp.copy(), save_dir, opt.bucket)
+            print_mutation(KEYS, results, hyp.copy(), save_dir, opt.bucket)
 
         # Plot results
         plot_evolve(evolve_csv)
