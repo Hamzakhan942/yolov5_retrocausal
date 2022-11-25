@@ -115,7 +115,7 @@ def is_writeable(dir, test=False):
 LOGGING_NAME = "yolov5"
 
 
-def set_logging(name=LOGGING_NAME, verbose=True):
+def set_logging(name=None, verbose=True):
     # sets up logging for the given name
     rank = int(os.getenv('RANK', -1))  # rank in world for Multi-GPU trainings
     level = logging.INFO if verbose and rank in {-1, 0} else logging.ERROR
@@ -137,7 +137,7 @@ def set_logging(name=LOGGING_NAME, verbose=True):
                 "propagate": False,}}})
 
 
-set_logging(LOGGING_NAME)  # run before defining LOGGER
+set_logging()  # run before defining LOGGER (WARNING: use name=None for Ultralytics HUB!)
 LOGGER = logging.getLogger(LOGGING_NAME)  # define globally (used in train.py, val.py, detect.py, etc.)
 if platform.system() == 'Windows':
     for fn in LOGGER.info, LOGGER.warning:
