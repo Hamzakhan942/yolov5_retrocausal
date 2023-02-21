@@ -21,6 +21,10 @@ from utils.general import LOGGER, check_dataset, check_file
 try:
     import wandb
 
+    # for no logging on server
+    if os.environ['WANDB_SILENT'].lower() == 'true':  # added to turn off logging and set to error level
+        LOGGER.setLevel(logging.ERROR)
+
     assert hasattr(wandb, '__version__')  # verify package import not local dir
 except (ImportError, AssertionError):
     wandb = None
