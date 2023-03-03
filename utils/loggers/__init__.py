@@ -14,6 +14,8 @@ from utils.general import colorstr, cv2, emojis
 from utils.loggers.wandb.wandb_utils import WandbLogger
 from utils.plots import plot_images, plot_results
 from utils.torch_utils import de_parallel
+from Web_hooks.slack_hooks import send_message_to_slack
+
 
 LOGGERS = ('csv', 'tb', 'wandb')  # text-file, TensorBoard, Weights & Biases
 RANK = int(os.getenv('RANK', -1))
@@ -90,7 +92,9 @@ class Loggers():
 
     def on_train_start(self):
         # Callback runs on train start
-        pass
+        message = f"Training Started!\nView run at: {self.wandb.wandb_run.url}"
+        send_message_to_slack(message=message, channel="#od-task-tracker")
+        # pass
 
     def on_pretrain_routine_end(self):
         # Callback runs on pre-train routine end
