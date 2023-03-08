@@ -14,7 +14,15 @@ from utils.general import colorstr, cv2, emojis
 from utils.loggers.wandb.wandb_utils import WandbLogger
 from utils.plots import plot_images, plot_results
 from utils.torch_utils import de_parallel
-from Web_hooks.slack_hooks import send_message_to_trainer
+from Events.observer import observer
+
+custom_callback_exits = False
+try:
+    from YoloCallbacks.LoggerCallbacks import Callbacks
+    custom_callback_exits = True
+
+except (ImportError, AssertionError) as e:
+    custom_callback_exits = False
 
 
 LOGGERS = ('csv', 'tb', 'wandb')  # text-file, TensorBoard, Weights & Biases
@@ -90,18 +98,20 @@ class Loggers():
         else:
             self.wandb = None
 
+        if custom_callback_exits:
+            self.callback = Callbacks(self)
+
     def on_train_start(self):
         # Callback runs on train start
         """Sends message to slack with wandb URL"""
-        message = f"Training Started!\nView run at: {self.wandb.wandb_run.url}"
-        send_message_to_trainer(message=message)
-        # pass
+        self.callback.on_train_start()
 
     def on_pretrain_routine_end(self):
         # Callback runs on pre-train routine end
         paths = self.save_dir.glob('*labels*.jpg')  # training labels
         if self.wandb:
             self.wandb.log({"Labels": [wandb.Image(str(x), caption=x.name) for x in paths]})
+        self.callback.on_pretrain_routine_end()
 
     def on_train_batch_end(self, ni, model, imgs, targets, paths, plots):
         # Callback runs on train batch end
@@ -117,22 +127,26 @@ class Loggers():
             if self.wandb and ni == 10:
                 files = sorted(self.save_dir.glob('train*.jpg'))
                 self.wandb.log({'Mosaics': [wandb.Image(str(f), caption=f.name) for f in files if f.exists()]})
+        self.callback.on_train_batch_end(ni, model, imgs, targets, paths, plots)
 
     def on_train_epoch_end(self, epoch):
         # Callback runs on train epoch end
         if self.wandb:
             self.wandb.current_epoch = epoch + 1
+        self.callback.on_train_epoch_end(epoch)
 
     def on_val_image_end(self, pred, predn, path, names, im):
         # Callback runs on val image end
         if self.wandb:
             self.wandb.val_one_image(pred, predn, path, names, im)
+        self.callback.on_val_image_end(pred, predn, path, names, im)
 
     def on_val_end(self):
         # Callback runs on val end
         if self.wandb:
             files = sorted(self.save_dir.glob('val*.jpg'))
             self.wandb.log({"Validation": [wandb.Image(str(f), caption=f.name) for f in files]})
+        self.callback.on_val_end()
 
     def on_fit_epoch_end(self, vals, epoch, best_fitness, fi):
         # Callback runs at the end of each fit (train+val) epoch
@@ -156,11 +170,15 @@ class Loggers():
             self.wandb.log(x)
             self.wandb.end_epoch(best_result=best_fitness == fi)
 
+        self.callback.on_fit_epoch_end(vals, epoch, best_fitness, fi)
+
     def on_model_save(self, last, epoch, final_epoch, best_fitness, fi):
         # Callback runs on model save event
         if self.wandb:
             if ((epoch + 1) % self.opt.save_period == 0 and not final_epoch) and self.opt.save_period != -1:
                 self.wandb.log_model(last.parent, self.opt, epoch, fi, best_model=best_fitness == fi)
+
+        self.callback.on_model_save(last, epoch, final_epoch, best_fitness, fi)
 
     def on_train_end(self, last, best, plots, epoch, results):
         # Callback runs on training end
@@ -185,8 +203,12 @@ class Loggers():
                                    aliases=['latest', 'best', 'stripped'])
             self.wandb.finish_run()
 
+        self.callback.on_train_end(last, best, plots, epoch, results)
+
     def on_params_update(self, params):
         # Update hyperparams or configs of the experiment
         # params: A dict containing {param: value} pairs
         if self.wandb:
             self.wandb.wandb_run.config.update(params, allow_val_change=True)
+
+        self.callback.on_params_update(params)
