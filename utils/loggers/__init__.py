@@ -14,7 +14,6 @@ from utils.general import colorstr, cv2, emojis
 from utils.loggers.wandb.wandb_utils import WandbLogger
 from utils.plots import plot_images, plot_results
 from utils.torch_utils import de_parallel
-from Events.observer import observer
 
 custom_callback_exits = False
 try:
